@@ -114,12 +114,15 @@ app.post("/signup", async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHashed = await bcrypt.hash(account.motdepasse, salt);
     account.motdepasse = passwordHashed;
-    //ON RETOURNE UN JWT
-    // const token = jwt.sign({ _id }, process.env.JWT_PRIVATE_KEY);
-    // res.header("x-auth-token", token).status(200).send({ name: account.name });
     // Inserer dans mongo db
-    const newUser = createUser(account);
-    res.status(201).json(account)
+    const last = await User.findOne().sort({id: -1}).exec();
+    if(!last) account.id = 1;
+    else account.id = last.id + 1;
+    const u = createUser(account);
+    //ON RETOURNE UN JWT
+    const token = jwt.sign({ name: account.name }, "" + JWT_SECRET_KEY);
+    console.log(token);
+    res.header("x-auth-token", token).status(200).send({ name: account.name });
   });
 
 
