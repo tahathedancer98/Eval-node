@@ -121,11 +121,42 @@ app.post("/signup", async (req, res) => {
     const u = createUser(account);
     //ON RETOURNE UN JWT
     const token = jwt.sign({ name: account.name }, "" + JWT_SECRET_KEY);
-    console.log(token);
     res.header("x-auth-token", token).status(200).send({ name: account.name });
   });
 
 
+// CONNEXION
+app.post("/signin", async (req, res) => {
+    const payload = req.body;
+    const schema = Joi.object({
+      email: Joi.string().max(255).required().email(),
+      password: Joi.string().min(3).max(50).required(),
+    });
+  
+    const { value: connexion, error } = schema.validate(payload);
+  
+    if (error) return res.status(400).send({ erreur: error.details[0].message });
+  
+    // ON CHERCHE LE COMPTE DANS LA DB
+    const check_user = await User.findOne({ email: account.email }).exec();
+    if (!check_user) return res.status(400).send({ erreur: "Email Invalide" });
+  
+    // ON DOIT COMPARER LES HASH
+    const passwordIsValid = await bcrypt.compare(req.body.password, account.password);
+    if (!passwordIsValid)
+      return res.status(400).send({ erreur: "Mot de Passe Invalide" });
+  
+    //ON RETOURNE UN JWT
+    const token = jwt.sign({ id:check_user.id }, process.env.JWT_PRIVATE_KEY);
+    res.header("x-auth-token", token).status(200).send({ name: account.name });
+    console.log(token);
+  });
+
+if (process.env.NODE_ENV !== "test") {
+    app.listen(3000, () => {
+        console.log("listening...");
+    });
+}
 
 app.listen(3000, ()=>{
     console.log("Listenning to 3000");
