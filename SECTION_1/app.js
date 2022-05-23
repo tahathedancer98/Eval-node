@@ -22,6 +22,19 @@ app.get('/taches/:id', (req, res) => {
 	const tache = Taches.getOne(id)
     res.status(200).json(tache);
 })
+// POST
+app.post('/taches', (req, res) => {
+    const payload = req.body;
+	const schema = Joi.object({
+        id: Joi.number().required(),
+        description: Joi.string().min(3).max(50).required(),
+        faite: Joi.boolean().required()
+    });
+    const { value: newData, error } = schema.validate(payload);
+    if (error) return res.status(400).send({ erreur: error.details[0].message });
+    const inserted = Taches.insertOne(newData);
+    res.status(201).json(inserted);
+})
 
 
 
