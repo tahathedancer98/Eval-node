@@ -3,7 +3,9 @@ const Joi = require("joi");
 
 const express = require('express');
 const app = express() 
+const bodyParser = require("body-parser");
 app.use(express.json());
+app.use(bodyParser.json());
 
 const CollectionDB = require('./CollectionDB');
 const Taches = new CollectionDB("Taches")
@@ -58,9 +60,5 @@ app.put('/taches/:id', (req, res) => {
     res.status(201).json(updated);
 })
 
+module.exports = app;
 
-
-
-app.listen(3000, ()=>{
-    console.log('listening to 3000')
-});
