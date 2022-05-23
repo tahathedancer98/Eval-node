@@ -43,7 +43,20 @@ app.delete('/taches/:id', (req, res) => {
     const deleted = Taches.deleteOne(id)
     res.status(201).json(deleted);
 })
+// UPDATE
+app.put('/taches/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const payload = req.body;
+	const schema = Joi.object({
+        description: Joi.string().min(3).max(50).required(),
+        faite: Joi.boolean().required()
+    });
+    const { value: newData, error } = schema.validate(payload);
+    if (error) return res.status(400).send({ erreur: error.details[0].message });
 
+    const updated = Taches.updateOne(id, newData)
+    res.status(201).json(updated);
+})
 
 
 
