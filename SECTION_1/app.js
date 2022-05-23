@@ -36,6 +36,13 @@ app.post('/taches', (req, res) => {
     res.status(201).json(inserted);
 })
 
+// DELETE
+app.delete('/taches/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+
+    const deleted = Taches.deleteOne(id)
+    res.status(201).json(deleted);
+})
 
 
 
