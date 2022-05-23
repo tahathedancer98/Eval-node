@@ -37,6 +37,7 @@ const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY
  */
 const mongoose = require('mongoose');
 const autoIncrementModelID = require('./counterModel');
+const { join } = require('path');
 
 mongoose.connect(process.env.DATABASE_URL)
     .then(() => console.log('Connected to mongo'))
@@ -58,12 +59,20 @@ userSchema.pre('save', function (next) {
     autoIncrementModelID('activities', this, next);
 });
 const tacheSchema = new mongoose.Schema({
-    _id:Number,
+    id: { type: Number, unique: true, min: 1 },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date },
     description : String,
     faite: Boolean,
     creePar : Number
 })
-    
+tacheSchema.pre('save', function (next) {
+    if (!this.isNew) {
+      next();
+      return;
+    }
+    autoIncrementModelID('activities', this, next);
+}); 
 const User = mongoose.model('User', userSchema);
 const Tache = mongoose.model('Tache', tacheSchema);
 
@@ -88,11 +97,6 @@ async function createTache(doc){
 // Route d'accueil => [ / ] Hello World
 app.get('/', (req , res) => {
     res.status(200).json({"Hello": "World"});
-})
-// Route d'accueil => [ / ] Hello World
-app.get('/users', async(req , res) => {
-    const users = await User.find().exec();
-    res.status(200).json(users);
 })
 
 // INSCRIPTION
@@ -124,13 +128,25 @@ app.post("/signup", async (req, res) => {
     res.header("x-auth-token", token).status(200).send({ name: account.name });
   });
 
-
+app.post("/user/creerTache",[authGuard], async (req, res) => {
+    const payload = req.body;
+    const schema = Joi.object({
+        description: Joi.string().max(255).required(),
+        faite: Joi.boolean().required(),
+      });
+    
+    const { value: tache, error } = schema.validate(payload);
+    if (error) return res.status(400).send({ erreur: error.details[0].message });
+    tache.creePar = user.id;
+    const u = createTache(tache);
+    res.status(201).json({"Tache créée" : true})
+})
 // CONNEXION
 app.post("/signin", async (req, res) => {
     const payload = req.body;
     const schema = Joi.object({
       email: Joi.string().max(255).required().email(),
-      password: Joi.string().min(3).max(50).required(),
+      password: Joi.string().min(3).max(50).required()
     });
   
     const { value: connexion, error } = schema.validate(payload);
@@ -147,17 +163,32 @@ app.post("/signin", async (req, res) => {
       return res.status(400).send({ erreur: "Mot de Passe Invalide" });
   
     //ON RETOURNE UN JWT
-    const token = jwt.sign({ id:check_user.id }, process.env.JWT_PRIVATE_KEY);
+    const token = jwt.sign({ name: account.name }, "" + JWT_SECRET_KEY);
     res.header("x-auth-token", token).status(200).send({ name: account.name });
     console.log(token);
   });
+/* Logique d'authentification */
+function authGuard(req, res, next) {
+    const token = req.header('x-auth-token');
+    
+    if (!token) return res.status(401).json({erreur: "Vous devez vous connecter"})
+  
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET_KEY); 
+      req.user = decoded;
+
+      // Le middleware a fait son boulot et peut laisser la place au suivant.
+      next();
+    } catch (exc) {
+      return res.status(400).json({erreur: "Token Invalide"})
+    }
+}
 
 if (process.env.NODE_ENV !== "test") {
     app.listen(3000, () => {
         console.log("listening...");
     });
 }
-
 app.listen(3000, ()=>{
     console.log("Listenning to 3000");
 })
