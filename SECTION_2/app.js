@@ -6,6 +6,7 @@ npm install express-async-errors
 npm install jsonwebtoken
 npm install --save httpie
 npm install mongoose
+npm install mongoose-auto-increment
 * */
 const express = require('express')
 const app = express();
@@ -35,17 +36,29 @@ const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY
  *           B D D
  */
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/Eval-express')
+const autoIncrementModelID = require('./counterModel');
+
+mongoose.connect(process.env.DATABASE_URL)
     .then(() => console.log('Connected to mongo'))
     .catch((err) => console.log('Pas pu se connecter', err))
 
 const userSchema = new mongoose.Schema({
-    id:Number,
+    id: { type: Number, unique: true, min: 1 },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date },
     email : String,
     motdepasse: String
 })
+userSchema.pre('save', function (next) {
+    if (!this.isNew) {
+      next();
+      return;
+    }
+  
+    autoIncrementModelID('activities', this, next);
+});
 const tacheSchema = new mongoose.Schema({
-    id:Number,
+    _id:Number,
     description : String,
     faite: Boolean,
     creePar : Number
@@ -76,6 +89,11 @@ async function createTache(doc){
 app.get('/', (req , res) => {
     res.status(200).json({"Hello": "World"});
 })
+// Route d'accueil => [ / ] Hello World
+app.get('/users', async(req , res) => {
+    const users = await User.find().exec();
+    res.status(200).json(users);
+})
 
 // INSCRIPTION
 app.post("/signup", async (req, res) => {
@@ -96,10 +114,11 @@ app.post("/signup", async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHashed = await bcrypt.hash(account.motdepasse, salt);
     account.motdepasse = passwordHashed;
-    
+    //ON RETOURNE UN JWT
+    // const token = jwt.sign({ _id }, process.env.JWT_PRIVATE_KEY);
+    // res.header("x-auth-token", token).status(200).send({ name: account.name });
     // Inserer dans mongo db
     const newUser = createUser(account);
-    console.log(newUser);
     res.status(201).json(account)
   });
 
